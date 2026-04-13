@@ -129,12 +129,12 @@ async def api_query(body: QueryRequest):
                 anthropic_key=ANTHROPIC_KEY,
                 openai_key=OPENAI_KEY,
             ),
-            timeout=30.0,
+            timeout=45.0,
         )
     except asyncio.TimeoutError:
         return JSONResponse(
             status_code=504,
-            content={"detail": "Request timed out after 30 seconds. Try a simpler question."},
+            content={"detail": "Request timed out after 45 seconds. Try a simpler question."},
         )
     except Exception as e:
         return JSONResponse(

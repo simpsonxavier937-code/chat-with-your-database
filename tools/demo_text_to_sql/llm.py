@@ -3,6 +3,8 @@ LLM helpers for the Text-to-SQL demo.
 Generates SQL from natural language using Anthropic Claude or OpenAI GPT.
 """
 
+import time
+
 SYSTEM_PROMPT = """\
 You are a SQL expert. Given the database schema below and a user's question,
 generate a single SQLite-compatible SELECT query that answers the question.
@@ -34,11 +36,46 @@ def generate_sql(
     system = SYSTEM_PROMPT.format(schema=schema)
 
     if anthropic_key:
-        raw = _call_anthropic(system, question, anthropic_key)
+        call = lambda: _call_anthropic(system, question, anthropic_key)
     else:
-        raw = _call_openai(system, question, openai_key)
+        call = lambda: _call_openai(system, question, openai_key)
 
+    raw = _retry(call, max_attempts=3, deadline=45)
     return _strip_fences(raw)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """Check if an exception is a transient error worth retrying."""
+    msg = str(exc).lower()
+    if "overloaded" in msg or "529" in msg or "503" in msg:
+        return True
+    if "rate" in msg and "limit" in msg:
+        return True
+    if "timeout" in msg or "timed out" in msg:
+        return True
+    return False
+
+
+def _retry(call, max_attempts: int = 3, deadline: float = 30):
+    """Retry a callable up to max_attempts times within deadline seconds."""
+    start = time.monotonic()
+    last_exc = None
+    delays = [5, 10]  # backoff between retries
+
+    for attempt in range(max_attempts):
+        try:
+            return call()
+        except Exception as e:
+            last_exc = e
+            if not _is_retryable(e) or attempt == max_attempts - 1:
+                raise
+            elapsed = time.monotonic() - start
+            wait = delays[attempt] if attempt < len(delays) else 5
+            if elapsed + wait > deadline:
+                raise
+            time.sleep(wait)
+
+    raise last_exc
 
 
 def _strip_fences(text: str) -> str:

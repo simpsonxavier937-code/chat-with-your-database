@@ -19,9 +19,14 @@
       <div class="logo-mark"></div>
       <span class="logo-text">QueryCraft</span>
     </div>
-    <button class="theme-toggle" @click="toggleTheme()" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
-      <span x-text="theme === 'dark' ? '&#9788;' : '&#9789;'"></span>
-    </button>
+    <div style="display: flex; align-items: center; gap: var(--sp-2);">
+      <button class="theme-toggle" @click="clearChat()" x-show="messages.length > 0" x-transition title="New Query">
+        &#8962;
+      </button>
+      <button class="theme-toggle" @click="toggleTheme()" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
+        <span x-text="theme === 'dark' ? '&#9788;' : '&#9789;'"></span>
+      </button>
+    </div>
   </header>
 
   <!-- Body -->

@@ -110,6 +110,11 @@ function app() {
       this.scrollToBottom();
     },
 
+    clearChat() {
+      this.messages = [];
+      this.highlightedTable = '';
+    },
+
     replayQuestion(q) {
       this.question = q;
       this.submitQuestion(q);
