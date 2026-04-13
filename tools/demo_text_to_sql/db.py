@@ -44,7 +44,7 @@ def get_schema(conn: sqlite3.Connection) -> list[dict]:
 def get_schema_ddl(conn: sqlite3.Connection) -> str:
     """Return the full DDL of every table as a single string (for LLM prompts)."""
     rows = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND sql IS NOT NULL"
+        "SELECT sql FROM sqlite_master WHERE type='table' AND sql IS NOT NULL AND name NOT LIKE 'sqlite_%'"
     ).fetchall()
     return "\n\n".join(row[0] for row in rows)
 
@@ -58,6 +58,8 @@ def run_query(conn: sqlite3.Connection, sql: str) -> dict:
     Raises:
         sqlite3.OperationalError: If the SQL is invalid.
     """
+    if not sql.strip().upper().startswith("SELECT"):
+        raise ValueError("Only SELECT queries are allowed")
     cursor = conn.execute(sql)
     columns = [desc[0] for desc in cursor.description] if cursor.description else []
     rows = [list(row) for row in cursor.fetchall()]

@@ -60,6 +60,12 @@ def test_run_query_against_chinook(db_path):
     assert result["rows"][0][0] > 0
 
 
+def test_run_query_rejects_non_select(db_path):
+    conn = get_connection(db_path)
+    with pytest.raises(ValueError, match="SELECT"):
+        run_query(conn, "DROP TABLE Album")
+
+
 def test_run_query_bad_sql_raises(db_path):
     conn = get_connection(db_path)
     with pytest.raises(sqlite3.OperationalError):
