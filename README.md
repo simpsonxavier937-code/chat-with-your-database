@@ -36,7 +36,7 @@ Your data stays in your environment. Only the database schema and your question 
 **1. Clone and install**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/chat-with-your-database.git
+git clone https://github.com/simpsonxavier937-code/chat-with-your-database.git
 cd chat-with-your-database
 pip install -r requirements.txt
 ```
