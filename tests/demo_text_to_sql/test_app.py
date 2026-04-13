@@ -27,6 +27,7 @@ def test_get_schema_returns_json(client):
     assert "columns" in data[0]
 
 
+@patch("tools.demo_text_to_sql.app.ANTHROPIC_KEY", "sk-ant-test")
 @patch("tools.demo_text_to_sql.app.generate_sql")
 def test_post_query_success(mock_gen, client):
     mock_gen.return_value = "SELECT 1 AS num"
@@ -39,6 +40,7 @@ def test_post_query_success(mock_gen, client):
     assert "summary" in data
 
 
+@patch("tools.demo_text_to_sql.app.ANTHROPIC_KEY", "sk-ant-test")
 @patch("tools.demo_text_to_sql.app.generate_sql")
 def test_post_query_sql_error(mock_gen, client):
     mock_gen.return_value = "SELECT * FROM nonexistent_table_xyz"
@@ -49,6 +51,7 @@ def test_post_query_sql_error(mock_gen, client):
     assert "sql" in data
 
 
+@patch("tools.demo_text_to_sql.app.ANTHROPIC_KEY", "sk-ant-test")
 @patch("tools.demo_text_to_sql.app.generate_sql")
 def test_post_query_llm_error(mock_gen, client):
     mock_gen.side_effect = Exception("Rate limited")
@@ -56,6 +59,25 @@ def test_post_query_llm_error(mock_gen, client):
     assert response.status_code == 502
     data = response.json()
     assert "detail" in data
+    assert "Rate limited" in data["detail"]
+
+
+@patch("tools.demo_text_to_sql.app.ANTHROPIC_KEY", "sk-ant-test")
+@patch("tools.demo_text_to_sql.app.generate_sql")
+def test_post_query_timeout(mock_gen, client):
+    import asyncio
+
+    original_wait_for = asyncio.wait_for
+
+    async def instant_timeout(coro, *, timeout):
+        """Simulate immediate timeout."""
+        raise asyncio.TimeoutError()
+
+    with patch("tools.demo_text_to_sql.app.asyncio.wait_for", side_effect=instant_timeout):
+        response = client.post("/api/query", json={"question": "slow query"})
+    assert response.status_code == 504
+    data = response.json()
+    assert "timed out" in data["detail"].lower()
 
 
 def test_post_query_empty_question(client):
