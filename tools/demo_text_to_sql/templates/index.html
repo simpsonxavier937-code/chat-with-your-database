@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QueryCraft — Chat With Your Database</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/brand.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app-layout" x-data="app()" x-init="init()">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-brand">
+      <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen">&#9776;</button>
+      <div class="logo-mark"></div>
+      <span class="logo-text">QueryCraft</span>
+    </div>
+    <button class="theme-toggle" @click="toggleTheme()" :title="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'">
+      <span x-text="theme === 'dark' ? '&#9788;' : '&#9789;'"></span>
+    </button>
+  </header>
+
+  <!-- Body -->
+  <div class="app-body">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" :class="{ collapsed: !sidebarOpen }">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Schema Explorer</div>
+        <template x-for="table in schema" :key="table.name">
+          <div>
+            <div class="schema-table"
+                 :class="{ active: highlightedTable === table.name }"
+                 @click="table._open = !table._open">
+              <span x-text="table._open ? '&#9660;' : '&#9654;'"></span>
+              <span x-text="table.name"></span>
+            </div>
+            <div class="schema-columns" x-show="table._open" x-transition>
+              <template x-for="col in table.columns" :key="col.name">
+                <div class="schema-column">
+                  <span x-text="col.name"></span>
+                  <span class="schema-col-type" x-text="col.type"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">Query History</div>
+        <template x-for="(item, idx) in history" :key="idx">
+          <div class="history-item" @click="replayQuestion(item)" x-text="item"></div>
+        </template>
+        <div x-show="history.length === 0" style="font-size: 12px; color: var(--color-text-secondary);">
+          No queries yet
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+      <div class="chat-thread" x-ref="chatThread">
+
+        <template x-if="!hasApiKey">
+          <div class="onboarding-card">
+            <h2>Welcome to QueryCraft</h2>
+            <p style="margin-bottom: 16px; color: var(--color-text-secondary);">
+              To get started, add your API key to the <code>.env</code> file:
+            </p>
+            <p><code>ANTHROPIC_API_KEY=sk-ant-...</code></p>
+            <p style="margin-top: 8px; color: var(--color-text-secondary); font-size: 13px;">
+              or <code>OPENAI_API_KEY=sk-...</code>
+            </p>
+          </div>
+        </template>
+
+        <template x-if="hasApiKey">
+          <div style="display: contents;">
+
+            <div class="example-questions" x-show="messages.length === 0" x-transition>
+              <template x-for="q in exampleQuestions" :key="q">
+                <button class="example-pill" @click="submitQuestion(q)" x-text="q"></button>
+              </template>
+            </div>
+
+            <template x-for="(msg, idx) in messages" :key="idx">
+              <div>
+                <template x-if="msg.role === 'user'">
+                  <div class="msg-user" x-text="msg.content"></div>
+                </template>
+
+                <template x-if="msg.role === 'assistant' && !msg.error">
+                  <div class="msg-assistant">
+                    <div class="msg-summary" x-text="msg.summary"></div>
+                    <button class="sql-toggle" @click="msg._showSql = !msg._showSql"
+                            x-text="msg._showSql ? '&#9660; Hide SQL' : '&#9654; View SQL'"></button>
+                    <div class="sql-block" x-show="msg._showSql" x-transition x-text="msg.sql"></div>
+
+                    <template x-if="msg.columns && msg.columns.length > 0">
+                      <div class="results-wrapper">
+                        <table class="results-table">
+                          <thead>
+                            <tr>
+                              <template x-for="(col, ci) in msg.columns" :key="ci">
+                                <th @click="sortColumn(msg, ci)">
+                                  <span x-text="col"></span>
+                                  <span class="sort-arrow"
+                                        x-show="msg._sortCol === ci"
+                                        x-text="msg._sortAsc ? '&#9650;' : '&#9660;'"></span>
+                                </th>
+                              </template>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <template x-for="(row, ri) in msg._displayRows" :key="ri">
+                              <tr>
+                                <template x-for="(cell, ci) in row" :key="ci">
+                                  <td x-text="cell"></td>
+                                </template>
+                              </tr>
+                            </template>
+                          </tbody>
+                        </table>
+                        <div class="truncation-note" x-show="msg.rows.length > 50"
+                             x-text="'Showing 50 of ' + msg.rows.length + ' rows'"></div>
+                        <button class="btn-export" @click="exportCsv(msg)">&#8681; Export CSV</button>
+                      </div>
+                    </template>
+
+                    <template x-if="msg.columns && msg.columns.length === 0 && !msg.error">
+                      <div class="msg-info" style="margin-top: 8px;">No results found for that query.</div>
+                    </template>
+                  </div>
+                </template>
+
+                <template x-if="msg.role === 'assistant' && msg.error === 'sql'">
+                  <div class="msg-error">
+                    <div>The generated query didn't work. Try rephrasing your question.</div>
+                    <button class="sql-toggle" @click="msg._showSql = !msg._showSql"
+                            x-text="msg._showSql ? '&#9660; Hide SQL' : '&#9654; View failed SQL'"
+                            style="color: var(--brand-error);"></button>
+                    <div class="sql-block" x-show="msg._showSql" x-transition x-text="msg.sql"></div>
+                  </div>
+                </template>
+
+                <template x-if="msg.role === 'assistant' && msg.error === 'llm'">
+                  <div class="msg-warning">
+                    <span x-text="'Couldn\'t generate a query — ' + msg.detail"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <div class="loading-dots" x-show="loading">
+              <span></span><span></span><span></span>
+            </div>
+
+          </div>
+        </template>
+      </div>
+
+      <div class="input-bar" x-show="hasApiKey">
+        <input type="text"
+               x-model="question"
+               @keydown.enter.prevent="submitQuestion(question)"
+               :disabled="loading"
+               placeholder="Ask a question about your data...">
+        <button class="btn-send" @click="submitQuestion(question)" :disabled="loading || !question.trim()">
+          <span x-show="!loading">&#10148;</span>
+          <span x-show="loading" style="font-size: 14px;">&#8987;</span>
+        </button>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="/static/app.js"></script>
+
+</body>
+</html>
