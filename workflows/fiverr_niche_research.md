@@ -1,12 +1,22 @@
 # Workflow: Fiverr Niche Research (AI Automation)
 
+## Status
+**Reusable, recurring workflow.** Re-run on demand (monthly cadence recommended) to
+refresh the market picture and adjust positioning. Each run produces dated output files
+in `.tmp/` so you can compare runs over time.
+
+## How to invoke
+Tell Claude: *"Run the Fiverr niche research workflow."* Claude should:
+1. Check `.tmp/` for the most recent run and note what's changed since
+2. Pull current user profile / project state from memory (don't re-ask if known)
+3. Execute Phases 1–5 below
+4. Produce a fresh `niche_brief_<YYYY-MM-DD>.md`
+5. Update the "Edge Cases & Lessons Learned" section with anything new it discovered
+
 ## Objective
 Identify the most promising sub-niche(s) on Fiverr for an "AI automation / workflow builder"
 service offering. Output a ranked shortlist of niches with evidence-backed positioning,
 pricing guidance, and a differentiation angle the user can lead with.
-
-This is a **recurring** workflow — the market moves fast, so it should be re-runnable
-monthly to keep positioning sharp.
 
 ## Required Inputs (ask the user before starting)
 1. **Background & skills** — What can the user actually deliver today? (tools they know:
@@ -45,7 +55,12 @@ a tool only if this becomes a recurring bottleneck.
 Look for unmet needs and frustration in public buyer-side discussions:
 - Reddit: r/Fiverr, r/freelance, r/automation, r/nocode, r/SideProject, r/Entrepreneur,
   r/smallbusiness — search "automate", "AI", "workflow", "Zapier", "n8n", "expensive"
-- Reddit JSON endpoints work without auth: `https://www.reddit.com/r/<sub>/search.json?q=<term>&restrict_sr=1`
+- Reddit is blocked by Claude Code's `WebFetch` (confirmed 2026-04-08 — error: "unable
+  to fetch from www.reddit.com"). The JSON endpoint approach does NOT work via WebFetch.
+  Workarounds: (a) `site:reddit.com` queries via `WebSearch` — Google indexes Reddit
+  thoroughly and returns titles + snippets; (b) a future Python tool using Reddit's
+  official API (free, requires app registration) if Reddit data becomes a recurring
+  bottleneck.
 - Twitter/X via WebSearch for "looking for someone to automate" / "need an AI to"
 - Upwork public job listings (parallel market) — what AI automation jobs are getting posted?
 - Capture: 10–20 specific buyer pains, each with a source URL and a 1-line summary
@@ -106,8 +121,13 @@ the user's cloud, per the project convention.
 ## Edge Cases & Lessons Learned
 *(This section grows over time as the workflow runs and we learn what breaks.)*
 
-- **Fiverr blocks scrapers**: Don't try headless browsers in v1. Use search engines as
-  the index and fetch only what's reachable.
+- **Fiverr blocks scrapers AND WebFetch**: Confirmed 2026-04-08 — direct WebFetch on
+  `fiverr.com/gigs/<keyword>` returns HTTP 403. Don't waste cycles retrying. Workarounds:
+  (a) Google search snippets surface gig titles/prices in the index — use
+  `site:fiverr.com "<keyword>"` searches; (b) ask the user to paste specific gig URLs
+  they want analyzed; (c) accept that gross-level competitor counts and pricing tiers
+  must come from secondary sources (Medium roundups, Fiverr's own category landing
+  pages which sometimes ARE fetchable, blog comparisons).
 - **Reddit search is noisy**: Filter results by score > 5 and recency (last 6 months) to
   cut spam.
 - **"AI automation" is too broad**: Always force the recommendations down to a specific
