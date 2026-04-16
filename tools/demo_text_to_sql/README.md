@@ -36,7 +36,7 @@ User question → LLM generates SQL → SQLite executes it → Results displayed
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/chat-with-your-database-demo.git
+git clone https://github.com/simpsonxavier937-code/chat-with-your-database.git
 cd chat-with-your-database-demo
 
 # Install dependencies
@@ -96,6 +96,10 @@ The schema explorer and LLM prompt adapt automatically — no code changes neede
 - **Read-only queries only** — the system prompt constrains the LLM to SELECT statements, and the backend enforces this before execution
 - **Your data stays local** — only the schema DDL and your question are sent to the LLM provider. Row data never leaves your machine.
 - **API keys stay in `.env`** — never committed to the repo
+
+## Hire Me
+
+Want this built for your database? [Check out my Fiverr gig](https://www.fiverr.com/s/gDbWkdo) — I'll connect your real schema, train it on your business terms, and hand you the source code.
 
 ## License
 
